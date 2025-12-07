@@ -5,6 +5,8 @@ import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
 
 suspend fun main() {
     val token = checkNotNull(System.getenv("BOT_TOKEN"))
@@ -37,11 +39,21 @@ suspend fun main() {
         response.respond {
             content = "Will play: $trackName"
         }
+
+        delay(3.seconds)
+
+        response.respond {
+            content = "Playing $trackName!"
+        }
     }
 
     println("Bot is ready and listening")
 
     kord.login()
+}
+
+fun download(url: String) {
+    // ffmpeg --extract-audio --audio-format opus --sponsorblock-remove music_offtopic
 }
 
 fun createAuthUrl(clientId: String): String {
