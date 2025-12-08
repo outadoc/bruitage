@@ -1,21 +1,30 @@
 package fr.outadoc.bruitage.app
 
 import dev.arbjerg.lavalink.protocol.v4.LoadResult
+import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
-import dev.schlaubi.lavakord.audio.Link
+import dev.kord.rest.builder.message.EmbedBuilder
+import dev.kord.rest.builder.message.embed
+import dev.schlaubi.lavakord.audio.TrackEndEvent
+import dev.schlaubi.lavakord.audio.TrackStartEvent
+import dev.schlaubi.lavakord.audio.on
 import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.kord.lavakord
-import dev.schlaubi.lavakord.plugins.lavasearch.LavaSearch
-import dev.schlaubi.lavakord.plugins.lavasrc.LavaSrc
 import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.onEach
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -26,8 +35,6 @@ suspend fun main() {
     val lavalink =
         kord.lavakord {
             plugins {
-                install(LavaSrc)
-                install(LavaSearch)
                 install(Sponsorblock)
             }
         }
@@ -47,7 +54,7 @@ suspend fun main() {
             description = "play some music",
         ) {
             string(
-                name = "track_name",
+                name = "query",
                 description = "The track to be played",
             ) {
                 required = true
@@ -61,15 +68,19 @@ suspend fun main() {
         )
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
-        println("Received: $interaction")
+        println("Received ${interaction.invokedCommandName} command from ${interaction.user.username} on ${interaction.guild.id}")
 
         val guild = interaction.guild
-        val channel = interaction.user.getVoiceState().channelId
+        val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
         val response = interaction.deferEphemeralResponse()
 
-        if (channel == null) {
+        if (voiceChannelId == null) {
             println("User ${interaction.user} is currently not in a voice channel")
             return@on
+        }
+
+        guild.activeThreads.collect {
+            println("$it")
         }
 
         val link = guild.getLink(lavalink)
@@ -80,9 +91,13 @@ suspend fun main() {
             categories = listOf(Category.MusicOfftopic),
         )
 
+        player.on<TrackEndEvent> {
+            link.disconnectAudio()
+        }
+
         when (interaction.invokedCommandId) {
             playCommand.id -> {
-                val trackName = interaction.command.strings["track_name"]
+                val trackName = interaction.command.strings["query"]
 
                 if (trackName.isNullOrBlank()) {
                     println("Track name is not provided")
@@ -90,10 +105,8 @@ suspend fun main() {
                 }
 
                 response.respond {
-                    content = "Will play: $trackName"
+                    content = "Searching for \"$trackName\"…"
                 }
-
-                link.connectAudio(channel.value)
 
                 val search: String =
                     if (trackName.startsWith("http")) {
@@ -102,39 +115,30 @@ suspend fun main() {
                         "ytsearch:$trackName"
                     }
 
-                when (val item = link.loadItem(search)) {
-                    is LoadResult.TrackLoaded -> {
-                        response.respond {
-                            content = "Playing track ${item.data.info.title}"
+                val track: Track? =
+                    when (val item = link.loadItem(search)) {
+                        is LoadResult.TrackLoaded -> item.data
+                        is LoadResult.PlaylistLoaded -> item.data.tracks.first()
+                        is LoadResult.SearchResult -> item.data.tracks.first()
+                        is LoadResult.NoMatches -> null
+                        is LoadResult.LoadFailed -> null
+                    }
+
+                if (track != null) {
+                    link.connectAudio(voiceChannelId = voiceChannelId.value)
+                    player.playTrack(track)
+
+                    response.respond {
+                        content = "Now Playing"
+                        embed {
+                            title = track.info.title
+                            description = track.info.author
+                            image = track.info.artworkUrl
                         }
-
-                        player.playTrack(track = item.data)
                     }
-
-                    is LoadResult.PlaylistLoaded -> {
-                        val track = item.data.tracks.first()
-                        response.respond {
-                            content = "Playing playlist ${track.info.title}"
-                        }
-
-                        player.playTrack(track)
-                    }
-
-                    is LoadResult.SearchResult -> {
-                        val track = item.data.tracks.first()
-                        response.respond {
-                            content = "Playing track ${track.info.title}"
-                        }
-
-                        player.playTrack(track)
-                    }
-
-                    is LoadResult.NoMatches -> {
-                        response.respond { content = "No matches" }
-                    }
-
-                    is LoadResult.LoadFailed -> {
-                        response.respond { content = item.data.message ?: "Exception" }
+                } else {
+                    response.respond {
+                        content = "No results found for $trackName (or something wrong happened)."
                     }
                 }
             }
