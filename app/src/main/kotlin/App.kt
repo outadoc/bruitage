@@ -5,14 +5,11 @@ import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.embed
 import dev.schlaubi.lavakord.audio.TrackEndEvent
-import dev.schlaubi.lavakord.audio.TrackStartEvent
 import dev.schlaubi.lavakord.audio.on
 import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.kord.lavakord
@@ -20,11 +17,6 @@ import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.onEach
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -161,17 +153,6 @@ suspend fun main() {
     println("Bot is ready and listening")
 
     kord.login()
-}
-
-private val DISCORD_OPUS =
-    OpusAudioDataFormat(
-        channelCount = 2,
-        sampleRate = 48000,
-        chunkSampleCount = 960,
-    )
-
-fun download(url: String) {
-    // ffmpeg --extract-audio --audio-format opus --sponsorblock-remove music_offtopic --no-part -o out.opus
 }
 
 fun createAuthUrl(clientId: String): String {
