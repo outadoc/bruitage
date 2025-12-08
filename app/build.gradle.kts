@@ -8,8 +8,9 @@ plugins {
 }
 
 dependencies {
-    // Project "app" depends on project "utils". (Project paths are separated with ":", so ":utils" refers to the top-level "utils" project.)
     implementation("dev.kord:kord-core:0.17.0")
+    implementation("dev.kord:kord-core-voice:0.17.0")
+    implementation("dev.kord:kord-voice:0.17.0")
 }
 
 application {

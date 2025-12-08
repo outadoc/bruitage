@@ -1,13 +1,17 @@
 package fr.outadoc.bruitage.app
 
+import dev.kord.common.annotation.KordVoice
+import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
+import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.seconds
+import dev.kord.voice.AudioFrame
+import dev.kord.voice.VoiceConnection
 
+@OptIn(KordVoice::class)
 suspend fun main() {
     val token = checkNotNull(System.getenv("BOT_TOKEN"))
     val clientId = checkNotNull(System.getenv("BOT_CLIENT_ID"))
@@ -18,7 +22,7 @@ suspend fun main() {
     println(createAuthUrl(clientId))
     println()
 
-    kord.createGlobalChatInputCommand(
+    val playCommand = kord.createGlobalChatInputCommand(
         name = "play",
         description = "play some music",
     ) {
@@ -30,20 +34,71 @@ suspend fun main() {
         }
     }
 
+    val stopCommand = kord.createGlobalChatInputCommand(
+        name = "stop",
+        description = "Stop playing the current track"
+    )
+
+    // here we keep track of active voice connections
+    val connections: MutableMap<Snowflake, VoiceConnection> = mutableMapOf()
+
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         println("Received: $interaction")
 
-        val response = interaction.deferEphemeralResponse()
-        val trackName = interaction.command.strings["track_name"] ?: return@on
+        val guildId = interaction.guildId
+        val channel = interaction.user.getVoiceState().getChannelOrNull()
 
-        response.respond {
-            content = "Will play: $trackName"
+        if (channel == null) {
+            println("User ${interaction.user} is currently not in a voice channel")
+            return@on
         }
 
-        delay(3.seconds)
+        when (interaction.invokedCommandId) {
+            playCommand.id -> {
+                val trackName = interaction.command.strings["track_name"]
 
-        response.respond {
-            content = "Playing $trackName!"
+                if (trackName.isNullOrBlank()) {
+                    println("Track name is not provided")
+                }
+
+                val response = interaction.deferEphemeralResponse()
+
+                response.respond {
+                    content = "Will play: $trackName"
+                }
+
+                // Let's close the old connection if there is one
+                connections.remove(guildId)?.shutdown()
+
+                val connection =
+                    channel.connect {
+                        selfDeaf = true
+                        audioProvider {
+                            //AudioFrame.fromData(player.provide()?.data)
+                            AudioFrame.SILENCE
+                        }
+                    }
+
+                connections[guildId] = connection
+
+                response.respond {
+                    content = "Playing $trackName!"
+                }
+            }
+
+            stopCommand.id -> {
+                val response = interaction.deferEphemeralResponse()
+
+                connections.remove(guildId)?.shutdown()
+
+                response.respond {
+                    content = "Playback stopped"
+                }
+            }
+
+            else -> {
+                println("Received interaction for unknown command ${interaction.command}")
+            }
         }
     }
 
@@ -53,7 +108,7 @@ suspend fun main() {
 }
 
 fun download(url: String) {
-    // ffmpeg --extract-audio --audio-format opus --sponsorblock-remove music_offtopic
+    // ffmpeg --extract-audio --audio-format opus --sponsorblock-remove music_offtopic --no-part -o out.opus
 }
 
 fun createAuthUrl(clientId: String): String {
