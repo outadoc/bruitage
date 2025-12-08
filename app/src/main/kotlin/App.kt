@@ -65,6 +65,7 @@ suspend fun main() {
 
         val guild = interaction.guild
         val channel = interaction.user.getVoiceState().channelId
+        val response = interaction.deferEphemeralResponse()
 
         if (channel == null) {
             println("User ${interaction.user} is currently not in a voice channel")
@@ -72,10 +73,12 @@ suspend fun main() {
         }
 
         val link = guild.getLink(lavalink)
-        val player =
-            link.player.apply {
-                // putSponsorblockCategories(Category.MusicOfftopic)
-            }
+        val player = link.player
+
+        link.node.putSponsorblockCategories(
+            guild = guild.id.value,
+            categories = listOf(Category.MusicOfftopic),
+        )
 
         when (interaction.invokedCommandId) {
             playCommand.id -> {
@@ -85,8 +88,6 @@ suspend fun main() {
                     println("Track name is not provided")
                     return@on
                 }
-
-                val response = interaction.deferEphemeralResponse()
 
                 response.respond {
                     content = "Will play: $trackName"
@@ -139,8 +140,7 @@ suspend fun main() {
             }
 
             stopCommand.id -> {
-                val response = interaction.deferEphemeralResponse()
-
+                player.stopTrack()
                 link.disconnectAudio()
 
                 response.respond {
