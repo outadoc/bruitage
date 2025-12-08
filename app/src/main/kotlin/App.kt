@@ -10,6 +10,7 @@ import dev.kord.rest.builder.interaction.string
 import dev.schlaubi.lavakord.audio.Link
 import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.kord.lavakord
+import dev.schlaubi.lavakord.plugins.lavasearch.LavaSearch
 import dev.schlaubi.lavakord.plugins.lavasrc.LavaSrc
 import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
@@ -22,33 +23,42 @@ suspend fun main() {
     val clientId = checkNotNull(System.getenv("BOT_CLIENT_ID"))
 
     val kord = Kord(token)
-    val lavalink = kord.lavakord {
-        plugins {
-            install(LavaSrc)
-            install(Sponsorblock)
+    val lavalink =
+        kord.lavakord {
+            plugins {
+                install(LavaSrc)
+                install(LavaSearch)
+                install(Sponsorblock)
+            }
         }
-    }
+
+    lavalink.addNode(
+        serverUri = "ws://localhost:2333",
+        password = "youshallnotpass",
+    )
 
     println("Add the bot to your server:")
     println(createAuthUrl(clientId))
     println()
 
-    val playCommand = kord.createGlobalChatInputCommand(
-        name = "play",
-        description = "play some music",
-    ) {
-        string(
-            name = "track_name",
-            description = "The track to be played",
+    val playCommand =
+        kord.createGlobalChatInputCommand(
+            name = "play",
+            description = "play some music",
         ) {
-            required = true
+            string(
+                name = "track_name",
+                description = "The track to be played",
+            ) {
+                required = true
+            }
         }
-    }
 
-    val stopCommand = kord.createGlobalChatInputCommand(
-        name = "stop",
-        description = "Stop playing the current track"
-    )
+    val stopCommand =
+        kord.createGlobalChatInputCommand(
+            name = "stop",
+            description = "Stop playing the current track",
+        )
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         println("Received: $interaction")
@@ -62,9 +72,10 @@ suspend fun main() {
         }
 
         val link = guild.getLink(lavalink)
-        val player = link.player.apply {
-            putSponsorblockCategories(Category.MusicOfftopic)
-        }
+        val player =
+            link.player.apply {
+                // putSponsorblockCategories(Category.MusicOfftopic)
+            }
 
         when (interaction.invokedCommandId) {
             playCommand.id -> {
@@ -89,11 +100,6 @@ suspend fun main() {
                     } else {
                         "ytsearch:$trackName"
                     }
-
-                if (link.state != Link.State.CONNECTED) {
-                    response.respond { content = "Not connectAudio to VC!" }
-                    return@on
-                }
 
                 when (val item = link.loadItem(search)) {
                     is LoadResult.TrackLoaded -> {
@@ -157,7 +163,7 @@ private val DISCORD_OPUS =
     OpusAudioDataFormat(
         channelCount = 2,
         sampleRate = 48000,
-        chunkSampleCount = 960
+        chunkSampleCount = 960,
     )
 
 fun download(url: String) {

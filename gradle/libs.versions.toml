@@ -11,6 +11,7 @@ lavakord = "9.1.5"
 lavakord-kord = { module = "dev.schlaubi.lavakord:kord", version.ref = "lavakord" }
 lavakord-plugins-lavasrc = { module = "dev.schlaubi.lavakord:lavasrc", version.ref = "lavakord" }
 lavakord-plugins-sponsorblock = { module = "dev.schlaubi.lavakord:sponsorblock", version.ref = "lavakord" }
+lavakord-plugins-lavasearch = { module = "dev.schlaubi.lavakord:lavasearch-jvm", version.ref = "lavakord" }
 kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
 kord-core-voice = { module = "dev.kord:kord-core-voice", version.ref = "kord" }
 kord-voice = { module = "dev.kord:kord-voice", version.ref = "kord" }

@@ -9,6 +9,7 @@ kotlin {
 
 dependencies {
     implementation(libs.lavakord.kord)
+    implementation(libs.lavakord.plugins.lavasearch)
     implementation(libs.lavakord.plugins.lavasrc)
     implementation(libs.lavakord.plugins.sponsorblock)
     implementation(libs.kord.core)
