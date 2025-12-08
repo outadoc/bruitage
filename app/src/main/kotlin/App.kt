@@ -9,7 +9,13 @@ import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEve
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
 import dev.kord.voice.AudioFrame
+import dev.kord.voice.AudioProvider
 import dev.kord.voice.VoiceConnection
+import kotlinx.io.IOException
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readByteArray
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -70,12 +76,20 @@ suspend fun main() {
                 // Let's close the old connection if there is one
                 connections.remove(guildId)?.shutdown()
 
+                val file = Path("/Volumes/Perso/Projects/bruitage/drama.opus")
+                val source = SystemFileSystem.source(file).buffered()
+
                 val connection =
                     channel.connect {
                         selfDeaf = true
                         audioProvider {
-                            //AudioFrame.fromData(player.provide()?.data)
-                            AudioFrame.SILENCE
+                            try {
+                                val bytes = source.readByteArray(DISCORD_OPUS.maximumChunkSize)
+                                AudioFrame.fromData(bytes)
+                            } catch (e: IOException) {
+                                e.printStackTrace()
+                                AudioFrame.SILENCE
+                            }
                         }
                     }
 
@@ -106,6 +120,13 @@ suspend fun main() {
 
     kord.login()
 }
+
+private val DISCORD_OPUS =
+    OpusAudioDataFormat(
+        channelCount = 2,
+        sampleRate = 48000,
+        chunkSampleCount = 960
+    )
 
 fun download(url: String) {
     // ffmpeg --extract-audio --audio-format opus --sponsorblock-remove music_offtopic --no-part -o out.opus

@@ -11,6 +11,7 @@ kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
 kord-core-voice = { module = "dev.kord:kord-core-voice", version.ref = "kord" }
 kord-voice = { module = "dev.kord:kord-voice", version.ref = "kord" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version = "0.8.2" }
+slf4j = "org.slf4j:slf4j-jdk14:2.0.17"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
