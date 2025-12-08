@@ -20,8 +20,8 @@ import dev.schlaubi.lavakord.rest.loadItem
 
 @OptIn(KordVoice::class)
 suspend fun main() {
-    val token = checkNotNull(System.getenv("BOT_TOKEN"))
-    val clientId = checkNotNull(System.getenv("BOT_CLIENT_ID"))
+    val token = getEnvOrThrow("BOT_TOKEN")
+    val clientId = getEnvOrThrow("BOT_CLIENT_ID")
 
     val kord = Kord(token)
     val lavalink =
@@ -159,3 +159,5 @@ fun createAuthUrl(clientId: String): String {
     val permissions = "2150632448"
     return "https://discord.com/oauth2/authorize?client_id=$clientId&permissions=$permissions&integration_type=0&scope=bot"
 }
+
+private fun getEnvOrThrow(key: String): String = System.getenv(key) ?: error("Environment variable not set: $key")
