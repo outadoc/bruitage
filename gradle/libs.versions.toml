@@ -5,8 +5,12 @@
 [versions]
 kotlin = "2.2.21"
 kord = "0.17.0"
+lavakord = "9.1.5"
 
 [libraries]
+lavakord-kord = { module = "dev.schlaubi.lavakord:kord", version.ref = "lavakord" }
+lavakord-plugins-lavasrc = { module = "dev.schlaubi.lavakord:lavasrc", version.ref = "lavakord" }
+lavakord-plugins-sponsorblock = { module = "dev.schlaubi.lavakord:sponsorblock", version.ref = "lavakord" }
 kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
 kord-core-voice = { module = "dev.kord:kord-core-voice", version.ref = "kord" }
 kord-voice = { module = "dev.kord:kord-voice", version.ref = "kord" }

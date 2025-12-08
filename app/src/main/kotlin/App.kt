@@ -1,21 +1,20 @@
 package fr.outadoc.bruitage.app
 
+import dev.arbjerg.lavalink.protocol.v4.LoadResult
 import dev.kord.common.annotation.KordVoice
-import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
-import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
-import dev.kord.voice.AudioFrame
-import dev.kord.voice.AudioProvider
-import dev.kord.voice.VoiceConnection
-import kotlinx.io.IOException
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.readByteArray
+import dev.schlaubi.lavakord.audio.Link
+import dev.schlaubi.lavakord.kord.getLink
+import dev.schlaubi.lavakord.kord.lavakord
+import dev.schlaubi.lavakord.plugins.lavasrc.LavaSrc
+import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
+import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
+import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
+import dev.schlaubi.lavakord.rest.loadItem
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -23,6 +22,12 @@ suspend fun main() {
     val clientId = checkNotNull(System.getenv("BOT_CLIENT_ID"))
 
     val kord = Kord(token)
+    val lavalink = kord.lavakord {
+        plugins {
+            install(LavaSrc)
+            install(Sponsorblock)
+        }
+    }
 
     println("Add the bot to your server:")
     println(createAuthUrl(clientId))
@@ -45,18 +50,20 @@ suspend fun main() {
         description = "Stop playing the current track"
     )
 
-    // here we keep track of active voice connections
-    val connections: MutableMap<Snowflake, VoiceConnection> = mutableMapOf()
-
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         println("Received: $interaction")
 
-        val guildId = interaction.guildId
-        val channel = interaction.user.getVoiceState().getChannelOrNull()
+        val guild = interaction.guild
+        val channel = interaction.user.getVoiceState().channelId
 
         if (channel == null) {
             println("User ${interaction.user} is currently not in a voice channel")
             return@on
+        }
+
+        val link = guild.getLink(lavalink)
+        val player = link.player.apply {
+            putSponsorblockCategories(Category.MusicOfftopic)
         }
 
         when (interaction.invokedCommandId) {
@@ -65,6 +72,7 @@ suspend fun main() {
 
                 if (trackName.isNullOrBlank()) {
                     println("Track name is not provided")
+                    return@on
                 }
 
                 val response = interaction.deferEphemeralResponse()
@@ -73,37 +81,61 @@ suspend fun main() {
                     content = "Will play: $trackName"
                 }
 
-                // Let's close the old connection if there is one
-                connections.remove(guildId)?.shutdown()
+                link.connectAudio(channel.value)
 
-                val file = Path("/Volumes/Perso/Projects/bruitage/drama.opus")
-                val source = SystemFileSystem.source(file).buffered()
-
-                val connection =
-                    channel.connect {
-                        selfDeaf = true
-                        audioProvider {
-                            try {
-                                val bytes = source.readByteArray(DISCORD_OPUS.maximumChunkSize)
-                                AudioFrame.fromData(bytes)
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                                AudioFrame.SILENCE
-                            }
-                        }
+                val search: String =
+                    if (trackName.startsWith("http")) {
+                        trackName
+                    } else {
+                        "ytsearch:$trackName"
                     }
 
-                connections[guildId] = connection
+                if (link.state != Link.State.CONNECTED) {
+                    response.respond { content = "Not connectAudio to VC!" }
+                    return@on
+                }
 
-                response.respond {
-                    content = "Playing $trackName!"
+                when (val item = link.loadItem(search)) {
+                    is LoadResult.TrackLoaded -> {
+                        response.respond {
+                            content = "Playing track ${item.data.info.title}"
+                        }
+
+                        player.playTrack(track = item.data)
+                    }
+
+                    is LoadResult.PlaylistLoaded -> {
+                        val track = item.data.tracks.first()
+                        response.respond {
+                            content = "Playing playlist ${track.info.title}"
+                        }
+
+                        player.playTrack(track)
+                    }
+
+                    is LoadResult.SearchResult -> {
+                        val track = item.data.tracks.first()
+                        response.respond {
+                            content = "Playing track ${track.info.title}"
+                        }
+
+                        player.playTrack(track)
+                    }
+
+                    is LoadResult.NoMatches -> {
+                        response.respond { content = "No matches" }
+                    }
+
+                    is LoadResult.LoadFailed -> {
+                        response.respond { content = item.data.message ?: "Exception" }
+                    }
                 }
             }
 
             stopCommand.id -> {
                 val response = interaction.deferEphemeralResponse()
 
-                connections.remove(guildId)?.shutdown()
+                link.disconnectAudio()
 
                 response.respond {
                     content = "Playback stopped"
