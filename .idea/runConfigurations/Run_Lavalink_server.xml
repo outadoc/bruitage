@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run Lavalink server" type="JarApplication">
+    <option name="JAR_PATH" value="$PROJECT_DIR$/lavalink/Lavalink.jar" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/lavalink" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <method v="2" />
+  </configuration>
+</component>
