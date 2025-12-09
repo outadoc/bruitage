@@ -107,31 +107,34 @@ suspend fun main() {
                         "ytsearch:$trackName"
                     }
 
-                val track: Track? =
+                val track: Result<Track> =
                     when (val item = link.loadItem(search)) {
-                        is LoadResult.TrackLoaded -> item.data
-                        is LoadResult.PlaylistLoaded -> item.data.tracks.first()
-                        is LoadResult.SearchResult -> item.data.tracks.first()
-                        is LoadResult.NoMatches -> null
-                        is LoadResult.LoadFailed -> null
+                        is LoadResult.TrackLoaded -> Result.success(item.data)
+                        is LoadResult.PlaylistLoaded -> Result.success(item.data.tracks.first())
+                        is LoadResult.SearchResult -> Result.success(item.data.tracks.first())
+                        is LoadResult.NoMatches -> Result.failure(TrackNotFoundException())
+                        is LoadResult.LoadFailed -> Result.failure(Exception(item.data.message))
                     }
 
-                if (track != null) {
-                    link.connectAudio(voiceChannelId = voiceChannelId.value)
-                    player.playTrack(track)
+                response.respond {
+                    track
+                        .onSuccess { track ->
+                            link.connectAudio(voiceChannelId = voiceChannelId.value)
+                            player.playTrack(track)
 
-                    response.respond {
-                        content = "Now Playing"
-                        embed {
-                            title = track.info.title
-                            description = track.info.author
-                            image = track.info.artworkUrl
+                            content = "Now Playing"
+                            embed {
+                                title = track.info.title
+                                description = track.info.author
+                                image = track.info.artworkUrl
+                            }
+                        }.onFailure { e ->
+                            content =
+                                when (e) {
+                                    is TrackNotFoundException -> "No results found for $trackName."
+                                    else -> "Something wrong happened: ${e.message}"
+                                }
                         }
-                    }
-                } else {
-                    response.respond {
-                        content = "No results found for $trackName (or something wrong happened)."
-                    }
                 }
             }
 
@@ -154,6 +157,8 @@ suspend fun main() {
 
     kord.login()
 }
+
+private class TrackNotFoundException : Exception()
 
 fun createAuthUrl(clientId: String): String {
     val permissions = "2150632448"
