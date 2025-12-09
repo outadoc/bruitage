@@ -3,10 +3,15 @@ package fr.outadoc.bruitage.app
 import dev.arbjerg.lavalink.protocol.v4.LoadResult
 import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
+import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.entity.component.ActionRowComponent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
+import dev.kord.rest.builder.component.ActionRowBuilder
+import dev.kord.rest.builder.component.ButtonBuilder
+import dev.kord.rest.builder.component.MessageComponentBuilder
 import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.message.embed
 import dev.schlaubi.lavakord.audio.TrackEndEvent
@@ -17,6 +22,7 @@ import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
+import kotlinx.serialization.json.JsonNull.content
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -64,7 +70,7 @@ suspend fun main() {
 
         val guild = interaction.guild
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
-        val response = interaction.deferEphemeralResponse()
+        val response = interaction.deferPublicResponse()
 
         if (voiceChannelId == null) {
             println("User ${interaction.user} is currently not in a voice channel")
@@ -123,6 +129,7 @@ suspend fun main() {
                             player.playTrack(track)
 
                             content = "Now Playing"
+
                             embed {
                                 title = track.info.title
                                 description = track.info.author
