@@ -27,8 +27,6 @@ jobs:
 
       - uses: gradle/actions/wrapper-validation@v5
 
-      - uses: gradle/actions/dependency-submission@v5
-
       - name: Build with Gradle
         run: ./gradlew app:distribution:assembleDist
 
