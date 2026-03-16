@@ -26,11 +26,11 @@ import dev.schlaubi.lavakord.rest.loadItem
 
 @OptIn(KordVoice::class)
 suspend fun main() {
-    val token = getEnvOrThrow("BOT_TOKEN")
-    val clientId = getEnvOrThrow("BOT_CLIENT_ID")
-    val mistralToken = getEnvOrThrow("MISTRAL_API_KEY")
-
-    val systemPrompt = SystemMessage(Strings.systemPrompt())
+    val token: String = getEnvOrThrow("BOT_TOKEN")
+    val clientId: String = getEnvOrThrow("BOT_CLIENT_ID")
+    val lavalinkUri = getEnvOrThrow("LAVALINK_URI")
+    val lavalinkPassword = getEnvOrThrow("LAVALINK_PASSWORD")
+    val mistralToken: String? = getEnvOrNull("MISTRAL_API_KEY")
 
     val kord = Kord(token)
     val lavalink =
@@ -41,8 +41,8 @@ suspend fun main() {
         }
 
     lavalink.addNode(
-        serverUri = "ws://localhost:2333",
-        password = "youshallnotpass",
+        serverUri = lavalinkUri,
+        password = lavalinkPassword,
     )
 
     val mistralModel =
@@ -155,7 +155,7 @@ suspend fun main() {
                                         ChatRequest
                                             .builder()
                                             .messages(
-                                                systemPrompt,
+                                                SystemMessage(Strings.systemPrompt()),
                                                 UserMessage(
                                                     Strings.promptListeningTo(
                                                         trackName = track.info.title,
@@ -211,3 +211,5 @@ fun createAuthUrl(clientId: String): String {
 }
 
 private fun getEnvOrThrow(key: String): String = System.getenv(key) ?: error("Environment variable not set: $key")
+
+private fun getEnvOrNull(key: String): String? = System.getenv(key)
