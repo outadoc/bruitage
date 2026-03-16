@@ -69,16 +69,40 @@ suspend fun main() {
             }
         }
 
+    val skipCommand =
+        kord.createGlobalChatInputCommand(
+            name = "skip",
+            description = Strings.commandSkipDescription(),
+        )
+
     val stopCommand =
         kord.createGlobalChatInputCommand(
             name = "stop",
             description = Strings.commandStopDescription(),
         )
 
+    /**
+     * Plays the next track in the queue for the given guild/link.
+     * Disconnects audio if the queue is empty.
+     */
+    suspend fun playNext(guildId: ULong) {
+        val link = lavalink.getLink(guildId)
+        val player = link.player
+
+        val next = MusicQueueManager.poll(guildId)
+        if (next == null) {
+            link.disconnectAudio()
+            return
+        }
+
+        player.playTrack(next)
+    }
+
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         println("Received ${interaction.invokedCommandName} command from ${interaction.user.username} on ${interaction.guild.id}")
 
         val guild = interaction.guild
+        val guildId = guild.id.value
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
 
         if (voiceChannelId == null) {
@@ -86,23 +110,22 @@ suspend fun main() {
             return@on
         }
 
-        guild.activeThreads.collect {
-            println("$it")
-        }
-
         val link = guild.getLink(lavalink)
         val player = link.player
 
         link.node.putSponsorblockCategories(
-            guild = guild.id.value,
+            guild = guildId,
             categories = listOf(Category.MusicOfftopic),
         )
 
+        // When a track ends, advance the queue.
         player.on<TrackEndEvent> {
-            link.disconnectAudio()
+            println("TrackEndEvent: $reason")
+            playNext(guildId)
         }
 
         when (interaction.invokedCommandId) {
+            // ── /play ──────────────────────────────────────────────────────────
             playCommand.id -> {
                 val trackName = interaction.command.strings["query"]
 
@@ -123,7 +146,7 @@ suspend fun main() {
                         "ytsearch:$trackName"
                     }
 
-                val track: Result<Track> =
+                val trackResult: Result<Track> =
                     when (val item = link.loadItem(search)) {
                         is LoadResult.TrackLoaded -> Result.success(item.data)
                         is LoadResult.PlaylistLoaded -> Result.success(item.data.tracks.first())
@@ -132,15 +155,18 @@ suspend fun main() {
                         is LoadResult.LoadFailed -> Result.failure(Exception(item.data.message))
                     }
 
-                track
+                trackResult
                     .onSuccess { track ->
-                        link.connectAudio(
-                            voiceChannelId = voiceChannelId.value,
-                        )
+                        val position = MusicQueueManager.enqueue(guildId, track)
+                        val isFirstTrack = player.playingTrack == null
 
-                        player.playTrack(
-                            track = track,
-                        )
+                        // Only connect + play immediately if this is the first (and only) track.
+                        if (isFirstTrack) {
+                            link.connectAudio(voiceChannelId = voiceChannelId.value)
+
+                            // Pop it back out of the queue and play it directly.
+                            playNext(guildId)
+                        }
 
                         val chatRequest =
                             ChatRequest
@@ -163,14 +189,16 @@ suspend fun main() {
                             }
 
                             content =
-                                try {
-                                    mistralModel
-                                        .chat(chatRequest)
-                                        .aiMessage()
-                                        .text()
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    ""
+                                buildString {
+                                    appendLine(Strings.addedToQueue(track.info.title, position))
+
+                                    try {
+                                        appendLine(
+                                            mistralModel.chat(chatRequest).aiMessage().text(),
+                                        )
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                         }
                     }.onFailure { e ->
@@ -184,9 +212,28 @@ suspend fun main() {
                     }
             }
 
-            stopCommand.id -> {
+            // ── /skip ──────────────────────────────────────────────────────────
+            skipCommand.id -> {
+                val upcoming = MusicQueueManager.snapshot(guildId)
+
                 player.stopTrack()
-                link.disconnectAudio()
+
+                interaction.respondPublic {
+                    content =
+                        if (upcoming.isEmpty()) {
+                            // Nothing left after current track
+                            Strings.queueEmpty()
+                        } else {
+                            Strings.skipped(upcoming.first().info.title)
+                        }
+                }
+            }
+
+            // ── /stop ──────────────────────────────────────────────────────────
+            stopCommand.id -> {
+                MusicQueueManager.clear(guildId)
+
+                player.stopTrack()
 
                 interaction.respondPublic {
                     content = Strings.playBackStopped()

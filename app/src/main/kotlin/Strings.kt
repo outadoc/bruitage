@@ -22,9 +22,20 @@ object Strings {
 
     fun playBackStopped() = "Allez, on s'arrête et on respire."
 
-    fun commandPlayDescription() = "jouer de la musique en vocal"
+    fun commandPlayDescription() = "Ajoute le morceau dans la file d'attente"
 
-    fun commandPlayQueryDescription() = "le nom du morceau à jouer, ou son URL"
+    fun commandPlayQueryDescription() = "Le nom du morceau à jouer, ou son URL"
 
-    fun commandStopDescription() = "arrêter de jouer le morceau actuel"
+    fun commandStopDescription() = "Arrête de jouer de la musique et vide la file d'attente"
+
+    fun commandSkipDescription(): String = "Passe au morceau suivant"
+
+    fun addedToQueue(
+        title: String,
+        position: Int,
+    ): String = "**$title** ajouté en position $position"
+
+    fun skipped(nextTitle: String): String = "On passe à la suite."
+
+    fun queueEmpty(): String = "La file d'attente est vide, ciao."
 }
