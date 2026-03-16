@@ -28,8 +28,8 @@ import dev.schlaubi.lavakord.rest.loadItem
 suspend fun main() {
     val token: String = getEnvOrThrow("BOT_TOKEN")
     val clientId: String = getEnvOrThrow("BOT_CLIENT_ID")
-    val lavalinkUri = getEnvOrThrow("LAVALINK_URI")
-    val lavalinkPassword = getEnvOrThrow("LAVALINK_PASSWORD")
+    val lavalinkUri: String = getEnvOrThrow("LAVALINK_URI")
+    val lavalinkPassword: String = getEnvOrThrow("LAVALINK_PASSWORD")
     val mistralToken: String? = getEnvOrNull("MISTRAL_API_KEY")
 
     val kord = Kord(token)
@@ -142,6 +142,19 @@ suspend fun main() {
                             track = track,
                         )
 
+                        val chatRequest =
+                            ChatRequest
+                                .builder()
+                                .messages(
+                                    SystemMessage(Strings.systemPrompt()),
+                                    UserMessage(
+                                        Strings.promptListeningTo(
+                                            trackName = track.info.title,
+                                            artist = track.info.author,
+                                        ),
+                                    ),
+                                ).build()
+
                         response.createPublicFollowup {
                             embed {
                                 title = track.info.title
@@ -151,22 +164,10 @@ suspend fun main() {
 
                             content =
                                 try {
-                                    val request =
-                                        ChatRequest
-                                            .builder()
-                                            .messages(
-                                                SystemMessage(Strings.systemPrompt()),
-                                                UserMessage(
-                                                    Strings.promptListeningTo(
-                                                        trackName = track.info.title,
-                                                        artist = track.info.author,
-                                                    ),
-                                                ),
-                                            ).build()
-
-                                    val response = mistralModel.chat(request)
-
-                                    response.aiMessage().text()
+                                    mistralModel
+                                        .chat(chatRequest)
+                                        .aiMessage()
+                                        .text()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                     ""
