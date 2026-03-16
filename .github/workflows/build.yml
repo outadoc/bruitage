@@ -28,7 +28,7 @@ jobs:
       - uses: gradle/actions/wrapper-validation@v5
 
       - name: Build with Gradle
-        run: ./gradlew app:distribution:assembleDist
+        run: ./gradlew app:assembleDist
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
