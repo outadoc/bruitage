@@ -3,17 +3,18 @@ package fr.outadoc.bruitage.app
 import dev.arbjerg.lavalink.protocol.v4.LoadResult
 import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
-import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
-import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.component.ActionRowComponent
+import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.response.createPublicFollowup
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
-import dev.kord.rest.builder.component.ActionRowBuilder
-import dev.kord.rest.builder.component.ButtonBuilder
-import dev.kord.rest.builder.component.MessageComponentBuilder
 import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.message.embed
+import dev.langchain4j.data.message.SystemMessage
+import dev.langchain4j.data.message.UserMessage
+import dev.langchain4j.model.chat.request.ChatRequest
+import dev.langchain4j.model.mistralai.MistralAiChatModel
+import dev.langchain4j.model.mistralai.MistralAiChatModelName
 import dev.schlaubi.lavakord.audio.TrackEndEvent
 import dev.schlaubi.lavakord.audio.on
 import dev.schlaubi.lavakord.kord.getLink
@@ -22,12 +23,14 @@ import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
-import kotlinx.serialization.json.JsonNull.content
 
 @OptIn(KordVoice::class)
 suspend fun main() {
     val token = getEnvOrThrow("BOT_TOKEN")
     val clientId = getEnvOrThrow("BOT_CLIENT_ID")
+    val mistralToken = getEnvOrThrow("MISTRAL_API_KEY")
+
+    val systemPrompt = SystemMessage(Strings.systemPrompt())
 
     val kord = Kord(token)
     val lavalink =
@@ -42,6 +45,13 @@ suspend fun main() {
         password = "youshallnotpass",
     )
 
+    val mistralModel =
+        MistralAiChatModel
+            .builder()
+            .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+            .apiKey(mistralToken)
+            .build()
+
     println("Add the bot to your server:")
     println(createAuthUrl(clientId))
     println()
@@ -49,11 +59,11 @@ suspend fun main() {
     val playCommand =
         kord.createGlobalChatInputCommand(
             name = "play",
-            description = "play some music",
+            description = Strings.commandPlayDescription(),
         ) {
             string(
                 name = "query",
-                description = "The track to be played",
+                description = Strings.commandPlayQueryDescription(),
             ) {
                 required = true
             }
@@ -62,7 +72,7 @@ suspend fun main() {
     val stopCommand =
         kord.createGlobalChatInputCommand(
             name = "stop",
-            description = "Stop playing the current track",
+            description = Strings.commandStopDescription(),
         )
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -70,7 +80,6 @@ suspend fun main() {
 
         val guild = interaction.guild
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
-        val response = interaction.deferPublicResponse()
 
         if (voiceChannelId == null) {
             println("User ${interaction.user} is currently not in a voice channel")
@@ -102,9 +111,10 @@ suspend fun main() {
                     return@on
                 }
 
-                response.respond {
-                    content = "Searching for \"$trackName\"…"
-                }
+                val response =
+                    interaction.respondPublic {
+                        content = Strings.searching(trackName)
+                    }
 
                 val search: String =
                     if (trackName.startsWith("http")) {
@@ -122,35 +132,63 @@ suspend fun main() {
                         is LoadResult.LoadFailed -> Result.failure(Exception(item.data.message))
                     }
 
-                response.respond {
-                    track
-                        .onSuccess { track ->
-                            link.connectAudio(voiceChannelId = voiceChannelId.value)
-                            player.playTrack(track)
+                track
+                    .onSuccess { track ->
+                        link.connectAudio(
+                            voiceChannelId = voiceChannelId.value,
+                        )
 
-                            content = "Now Playing"
+                        player.playTrack(
+                            track = track,
+                        )
 
+                        response.createPublicFollowup {
                             embed {
                                 title = track.info.title
                                 description = track.info.author
                                 image = track.info.artworkUrl
                             }
-                        }.onFailure { e ->
+
                             content =
-                                when (e) {
-                                    is TrackNotFoundException -> "No results found for $trackName."
-                                    else -> "Something wrong happened: ${e.message}"
+                                try {
+                                    val request =
+                                        ChatRequest
+                                            .builder()
+                                            .messages(
+                                                systemPrompt,
+                                                UserMessage(
+                                                    Strings.promptListeningTo(
+                                                        trackName = track.info.title,
+                                                        artist = track.info.author,
+                                                    ),
+                                                ),
+                                            ).build()
+
+                                    val response = mistralModel.chat(request)
+
+                                    response.aiMessage().text()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    ""
                                 }
                         }
-                }
+                    }.onFailure { e ->
+                        response.createPublicFollowup {
+                            content =
+                                when (e) {
+                                    is TrackNotFoundException -> Strings.trackNotFound(trackName)
+                                    else -> Strings.unknownError(e.message)
+                                }
+                        }
+                    }
             }
 
             stopCommand.id -> {
                 player.stopTrack()
                 link.disconnectAudio()
 
-                response.respond {
-                    content = "Playback stopped"
+                interaction.respondPublic {
+                    content = Strings.playBackStopped()
                 }
             }
 
