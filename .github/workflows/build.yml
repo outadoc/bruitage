@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  docker:
+  publish:
     runs-on: ubuntu-latest
 
     permissions:
@@ -17,6 +17,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: gradle/actions/wrapper-validation@v5
+
+      - uses: gradle/actions/dependency-submission@v5
+
+      - name: Build with Gradle
+        run: ./gradlew app:distribution:assembleDist
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -24,19 +39,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha
-            type=raw,value=latest
-
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
