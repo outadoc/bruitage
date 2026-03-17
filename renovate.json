@@ -10,6 +10,10 @@
     {
       "matchManagers": ["gradle", "gradle-wrapper"],
       "groupName": "Gradle"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker"
     }
   ]
 }
