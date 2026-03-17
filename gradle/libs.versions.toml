@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.2.21"
+kotlin = "2.3.20"
 kord = "0.18.1"
 lavakord = "9.2.0"
 langchain = "1.12.2"
