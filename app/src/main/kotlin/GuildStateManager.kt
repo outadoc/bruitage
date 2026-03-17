@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap
 object GuildStateManager {
     private val states = ConcurrentHashMap<ULong, GuildState>()
 
+    fun get(guildId: ULong): GuildState? = states[guildId]
+
     fun getOrCreate(
         guildId: ULong,
         lavalink: LavaKord,

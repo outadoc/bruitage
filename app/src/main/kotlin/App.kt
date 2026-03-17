@@ -7,6 +7,7 @@ import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.behavior.interaction.response.createPublicFollowup
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.user.VoiceStateUpdateEvent
 import dev.kord.core.on
 import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.message.embed
@@ -15,11 +16,14 @@ import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.mistralai.MistralAiChatModel
 import dev.langchain4j.model.mistralai.MistralAiChatModelName
+import dev.schlaubi.lavakord.audio.Link
 import dev.schlaubi.lavakord.kord.lavakord
 import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.toList
 
 @OptIn(KordVoice::class)
 suspend fun main() {
@@ -265,6 +269,45 @@ suspend fun main() {
             else -> {
                 println("Received interaction for unknown command ${interaction.command}")
             }
+        }
+    }
+
+    kord.on<VoiceStateUpdateEvent> {
+        val guildId = state.guildId.value
+        val leftChannelId = old?.channelId ?: return@on
+
+        val guildState = GuildStateManager.get(guildId) ?: return@on
+        if (guildState.link.state != Link.State.CONNECTED) {
+            return@on
+        }
+
+        val guild = state.getGuildOrNull() ?: return@on
+        val botChannelId =
+            guild
+                .getMemberOrNull(kord.selfId)
+                ?.getVoiceStateOrNull()
+                ?.channelId
+
+        if (leftChannelId != botChannelId) {
+            return@on
+        }
+
+        val remainingStates =
+            guild.voiceStates
+                .filter { it.channelId == botChannelId && it.userId != kord.selfId }
+                .toList()
+
+        var nonBotRemaining = 0
+        for (vs in remainingStates) {
+            if (guild.getMemberOrNull(vs.userId)?.isBot != true) {
+                nonBotRemaining++
+            }
+        }
+
+        if (nonBotRemaining == 0) {
+            println("Voice channel empty, disconnecting from guild $guildId")
+            guildState.clear()
+            guildState.link.disconnectAudio()
         }
     }
 
