@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: gradle/actions/wrapper-validation@v5
+
+      - name: Build with Gradle
+        run: ./gradlew app:assembleDist
