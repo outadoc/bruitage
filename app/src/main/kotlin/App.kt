@@ -124,7 +124,9 @@ suspend fun main() {
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
 
         if (voiceChannelId == null) {
-            println("User ${interaction.user} is currently not in a voice channel")
+            interaction.respondPublic {
+                content = Strings.notInVoiceChannel()
+            }
             return@on
         }
 

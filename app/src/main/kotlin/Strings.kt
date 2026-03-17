@@ -3,6 +3,8 @@ package fr.outadoc.bruitage.app
 object Strings {
     fun searching(trackName: String) = "Je cherche `$trackName`…"
 
+    fun notInVoiceChannel() = "Hmm, il s'agirait de commencer par rejoindre un canal vocal."
+
     fun promptListeningTo(
         trackName: String,
         artist: String,
