@@ -15,9 +15,6 @@ import dev.langchain4j.data.message.UserMessage
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.mistralai.MistralAiChatModel
 import dev.langchain4j.model.mistralai.MistralAiChatModelName
-import dev.schlaubi.lavakord.audio.TrackEndEvent
-import dev.schlaubi.lavakord.audio.on
-import dev.schlaubi.lavakord.kord.getLink
 import dev.schlaubi.lavakord.kord.lavakord
 import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
@@ -86,16 +83,19 @@ suspend fun main() {
      * Disconnects audio if the queue is empty.
      */
     suspend fun playNext(guildId: ULong) {
-        val link = lavalink.getLink(guildId)
-        val player = link.player
+        val state =
+            GuildStateManager.getOrCreate(guildId, lavalink) { id ->
+                println("TrackEndEvent")
+                playNext(id)
+            }
 
-        val next = MusicQueueManager.poll(guildId)
+        val next = state.poll()
         if (next == null) {
-            link.disconnectAudio()
+            state.link.disconnectAudio()
             return
         }
 
-        player.playTrack(next)
+        state.link.player.playTrack(next)
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -110,19 +110,19 @@ suspend fun main() {
             return@on
         }
 
-        val link = guild.getLink(lavalink)
+        val state =
+            GuildStateManager.getOrCreate(guildId, lavalink) { id ->
+                println("TrackEndEvent")
+                playNext(id)
+            }
+
+        val link = state.link
         val player = link.player
 
         link.node.putSponsorblockCategories(
             guild = guildId,
             categories = listOf(Category.MusicOfftopic),
         )
-
-        // When a track ends, advance the queue.
-        player.on<TrackEndEvent> {
-            println("TrackEndEvent: $reason")
-            playNext(guildId)
-        }
 
         when (interaction.invokedCommandId) {
             // ── /play ──────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ suspend fun main() {
 
                 trackResult
                     .onSuccess { track ->
-                        val position = MusicQueueManager.enqueue(guildId, track)
+                        val position = state.enqueue(track)
                         val isFirstTrack = player.playingTrack == null
 
                         // Only connect + play immediately if this is the first (and only) track.
@@ -214,7 +214,7 @@ suspend fun main() {
 
             // ── /skip ──────────────────────────────────────────────────────────
             skipCommand.id -> {
-                val upcoming = MusicQueueManager.snapshot(guildId)
+                val upcoming = state.snapshot()
 
                 player.stopTrack()
 
@@ -231,7 +231,7 @@ suspend fun main() {
 
             // ── /stop ──────────────────────────────────────────────────────────
             stopCommand.id -> {
-                MusicQueueManager.clear(guildId)
+                state.clear()
 
                 player.stopTrack()
 
