@@ -78,6 +78,12 @@ suspend fun main() {
             description = Strings.commandStopDescription(),
         )
 
+    val queueCommand =
+        kord.createGlobalChatInputCommand(
+            name = "queue",
+            description = Strings.commandQueueDescription(),
+        )
+
     /**
      * Plays the next track in the queue for the given guild/link.
      * Disconnects audio if the queue is empty.
@@ -191,6 +197,7 @@ suspend fun main() {
                             content =
                                 buildString {
                                     appendLine(Strings.addedToQueue(track.info.title, position))
+                                    appendLine()
 
                                     try {
                                         appendLine(
@@ -224,8 +231,23 @@ suspend fun main() {
                             // Nothing left after current track
                             Strings.queueEmpty()
                         } else {
-                            Strings.skipped(upcoming.first().info.title)
+                            val next = upcoming.first()
+                            Strings.skipped(
+                                trackName = next.info.title,
+                                artist = next.info.author,
+                            )
                         }
+                }
+            }
+
+            // ── /queue ─────────────────────────────────────────────────────────
+            queueCommand.id -> {
+                interaction.respondPublic {
+                    content =
+                        Strings.queueList(
+                            nowPlaying = player.playingTrack?.info?.title,
+                            upcoming = state.snapshot().map { it.info.title },
+                        )
                 }
             }
 

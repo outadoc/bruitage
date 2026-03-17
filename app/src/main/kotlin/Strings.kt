@@ -28,14 +28,38 @@ object Strings {
 
     fun commandStopDescription() = "Arrête de jouer de la musique et vide la file d'attente"
 
+    fun commandQueueDescription() = "Affiche la file d'attente"
+
     fun commandSkipDescription(): String = "Passe au morceau suivant"
 
     fun addedToQueue(
-        title: String,
+        trackName: String,
         position: Int,
-    ): String = "**$title** ajouté en position $position"
+    ): String = "**$trackName** ajouté en position $position"
 
-    fun skipped(nextTitle: String): String = "On passe à la suite."
+    fun skipped(
+        trackName: String,
+        artist: String,
+    ): String = "On passe à la suite.\n**$artist - $trackName**"
 
     fun queueEmpty(): String = "La file d'attente est vide, ciao."
+
+    fun queueList(
+        nowPlaying: String?,
+        upcoming: List<String>,
+    ): String =
+        buildString {
+            if (nowPlaying != null) {
+                appendLine("**En cours :** $nowPlaying")
+            }
+
+            if (upcoming.isEmpty()) {
+                appendLine("Rien d'autre dans la file d'attente.")
+            } else {
+                appendLine("**File d'attente :**")
+                upcoming.forEachIndexed { index, title ->
+                    appendLine("${index + 1}. $title")
+                }
+            }
+        }.trim()
 }
