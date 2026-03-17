@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.2.21"
+kotlin = "2.3.20"
 kord = "0.18.1"
 lavakord = "9.2.0"
 langchain = "1.12.2"
@@ -12,7 +12,7 @@ lavakord-plugins-lavasearch = { module = "dev.schlaubi.lavakord:lavasearch-jvm",
 kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
 kord-core-voice = { module = "dev.kord:kord-core-voice", version.ref = "kord" }
 kord-voice = { module = "dev.kord:kord-voice", version.ref = "kord" }
-kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version = "0.8.2" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version = "0.9.0" }
 slf4j = "org.slf4j:slf4j-jdk14:2.0.17"
 langchain-core = { module = "dev.langchain4j:langchain4j", version.ref = "langchain" }
 langchain-mistral = { module = "dev.langchain4j:langchain4j-mistral-ai", version.ref = "langchain" }
