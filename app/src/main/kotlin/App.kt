@@ -123,6 +123,12 @@ suspend fun main() {
         val guildId = guild.id.value
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
 
+        // Clean up old commands
+        kord
+            .getGuildApplicationCommands(guild.id)
+            .onEach { it.delete() }
+            .collect()
+
         if (voiceChannelId == null) {
             interaction.respondPublic {
                 content = Strings.notInVoiceChannel()
