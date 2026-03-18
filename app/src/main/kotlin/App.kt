@@ -22,9 +22,7 @@ import dev.schlaubi.lavakord.plugins.sponsorblock.Sponsorblock
 import dev.schlaubi.lavakord.plugins.sponsorblock.model.Category
 import dev.schlaubi.lavakord.plugins.sponsorblock.rest.putSponsorblockCategories
 import dev.schlaubi.lavakord.rest.loadItem
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 
 @OptIn(KordVoice::class)
@@ -60,12 +58,6 @@ suspend fun main() {
     println("Add the bot to your server:")
     println(createAuthUrl(clientId))
     println()
-
-    // Clean up old commands
-    kord
-        .getGlobalApplicationCommands()
-        .onEach { it.delete() }
-        .collect()
 
     val playCommand =
         kord.createGlobalChatInputCommand(
@@ -126,12 +118,6 @@ suspend fun main() {
 
         val deferred = interaction.deferPublicResponse()
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
-
-        // Clean up old commands
-        kord
-            .getGuildApplicationCommands(guild.id)
-            .onEach { it.delete() }
-            .collect()
 
         if (voiceChannelId == null) {
             deferred.respond {
