@@ -118,3 +118,8 @@ A Lavalink server is provided for development purposes in the `lavalink` directo
 - [LavaKord](https://github.com/DRSchlaubi/lavakord) + [Lavalink](https://github.com/lavalink-devs/Lavalink)
   for Discord audio playback
 - [LangChain4j](https://github.com/langchain4j/langchain4j) for AI commentary
+
+## AI disclosure
+
+Claude Code was used to generate some of the code of this bot, but it was mostly built from scratch
+by hand.
