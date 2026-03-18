@@ -35,6 +35,8 @@ suspend fun main() {
     val lavalinkPassword: String = getEnvOrThrow("LAVALINK_PASSWORD")
     val mistralToken: String? = getEnvOrNull("MISTRAL_API_KEY")
 
+    val strings: Strings = ResourceBundleStrings()
+
     val kord = Kord(token)
     val lavalink =
         kord.lavakord {
@@ -68,11 +70,11 @@ suspend fun main() {
     val playCommand =
         kord.createGlobalChatInputCommand(
             name = "play",
-            description = Strings.commandPlayDescription(),
+            description = strings.commandPlayDescription(),
         ) {
             string(
                 name = "query",
-                description = Strings.commandPlayQueryDescription(),
+                description = strings.commandPlayQueryDescription(),
             ) {
                 required = true
             }
@@ -81,19 +83,19 @@ suspend fun main() {
     val skipCommand =
         kord.createGlobalChatInputCommand(
             name = "skip",
-            description = Strings.commandSkipDescription(),
+            description = strings.commandSkipDescription(),
         )
 
     val stopCommand =
         kord.createGlobalChatInputCommand(
             name = "stop",
-            description = Strings.commandStopDescription(),
+            description = strings.commandStopDescription(),
         )
 
     val queueCommand =
         kord.createGlobalChatInputCommand(
             name = "queue",
-            description = Strings.commandQueueDescription(),
+            description = strings.commandQueueDescription(),
         )
 
     /**
@@ -133,7 +135,7 @@ suspend fun main() {
 
         if (voiceChannelId == null) {
             deferred.respond {
-                content = Strings.notInVoiceChannel()
+                content = strings.notInVoiceChannel()
             }
             return@on
         }
@@ -168,7 +170,7 @@ suspend fun main() {
 
                 val response =
                     deferred.respond {
-                        content = Strings.searching(trackName)
+                        content = strings.searching(trackName)
                     }
 
                 val search: String =
@@ -204,9 +206,9 @@ suspend fun main() {
                             ChatRequest
                                 .builder()
                                 .messages(
-                                    SystemMessage(Strings.systemPrompt()),
+                                    SystemMessage(strings.systemPrompt()),
                                     UserMessage(
-                                        Strings.promptListeningTo(
+                                        strings.promptListeningTo(
                                             trackName = track.info.title,
                                             artist = track.info.author,
                                         ),
@@ -222,7 +224,7 @@ suspend fun main() {
 
                             content =
                                 buildString {
-                                    appendLine(Strings.addedToQueue(track.info.title, position))
+                                    appendLine(strings.addedToQueue(track.info.title, position))
                                     appendLine()
 
                                     try {
@@ -238,8 +240,8 @@ suspend fun main() {
                         response.createPublicFollowup {
                             content =
                                 when (e) {
-                                    is TrackNotFoundException -> Strings.trackNotFound(trackName)
-                                    else -> Strings.unknownError(e.message)
+                                    is TrackNotFoundException -> strings.trackNotFound(trackName)
+                                    else -> strings.unknownError(e.message)
                                 }
                         }
                     }
@@ -255,10 +257,10 @@ suspend fun main() {
                     content =
                         if (upcoming.isEmpty()) {
                             // Nothing left after current track
-                            Strings.queueEmpty()
+                            strings.queueEmpty()
                         } else {
                             val next = upcoming.first()
-                            Strings.skipped(
+                            strings.skipped(
                                 trackName = next.info.title,
                                 artist = next.info.author,
                             )
@@ -270,7 +272,7 @@ suspend fun main() {
             queueCommand.id -> {
                 deferred.respond {
                     content =
-                        Strings.queueList(
+                        strings.queueList(
                             nowPlaying = player.playingTrack?.info?.title,
                             upcoming = state.snapshot().map { it.info.title },
                         )
@@ -284,7 +286,7 @@ suspend fun main() {
                 player.stopTrack()
 
                 deferred.respond {
-                    content = Strings.playBackStopped()
+                    content = strings.playBackStopped()
                 }
             }
 
