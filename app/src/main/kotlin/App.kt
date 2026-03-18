@@ -4,8 +4,8 @@ import dev.arbjerg.lavalink.protocol.v4.LoadResult
 import dev.arbjerg.lavalink.protocol.v4.Track
 import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
-import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.behavior.interaction.response.createPublicFollowup
+import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.user.VoiceStateUpdateEvent
 import dev.kord.core.on
@@ -121,6 +121,8 @@ suspend fun main() {
 
         val guild = interaction.guild
         val guildId = guild.id.value
+
+        val deferred = interaction.deferPublicResponse()
         val voiceChannelId = interaction.user.getVoiceStateOrNull()?.channelId
 
         // Clean up old commands
@@ -130,17 +132,21 @@ suspend fun main() {
             .collect()
 
         if (voiceChannelId == null) {
-            interaction.respondPublic {
+            deferred.respond {
                 content = Strings.notInVoiceChannel()
             }
             return@on
         }
 
         val state =
-            GuildStateManager.getOrCreate(guildId, lavalink) { id ->
-                println("TrackEndEvent")
-                playNext(id)
-            }
+            GuildStateManager.getOrCreate(
+                guildId = guildId,
+                lavalink = lavalink,
+                onTrackEnd = { id ->
+                    println("TrackEndEvent")
+                    playNext(id)
+                },
+            )
 
         val link = state.link
         val player = link.player
@@ -161,7 +167,7 @@ suspend fun main() {
                 }
 
                 val response =
-                    interaction.respondPublic {
+                    deferred.respond {
                         content = Strings.searching(trackName)
                     }
 
@@ -245,7 +251,7 @@ suspend fun main() {
 
                 player.stopTrack()
 
-                interaction.respondPublic {
+                deferred.respond {
                     content =
                         if (upcoming.isEmpty()) {
                             // Nothing left after current track
@@ -262,7 +268,7 @@ suspend fun main() {
 
             // ── /queue ─────────────────────────────────────────────────────────
             queueCommand.id -> {
-                interaction.respondPublic {
+                deferred.respond {
                     content =
                         Strings.queueList(
                             nowPlaying = player.playingTrack?.info?.title,
@@ -277,7 +283,7 @@ suspend fun main() {
 
                 player.stopTrack()
 
-                interaction.respondPublic {
+                deferred.respond {
                     content = Strings.playBackStopped()
                 }
             }
